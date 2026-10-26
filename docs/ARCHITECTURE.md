@@ -102,7 +102,11 @@ AQUORA uses SQLite with Write-Ahead Logging (`PRAGMA journal_mode=WAL; PRAGMA sy
 
 ### LoRa Retransmission & SHA-256 Deduplication
 Due to radio packet loss in rural environments, ESP32 nodes and repeaters retransmit packets. To avoid double-counting volume or distorting wave front statistics:
-$$\text{Hash} = \text{SHA256}(\text{node\_id} \mid \text{timestamp\_iso} \mid \text{water\_level\_cm})$$
+
+```text
+Hash = SHA256(node_id | timestamp_iso | water_level_cm)
+```
+
 Incoming packets with existing hashes are acknowledged idempotently without creating duplicate database records.
 
 ### Client-Side IndexedDB Cache
