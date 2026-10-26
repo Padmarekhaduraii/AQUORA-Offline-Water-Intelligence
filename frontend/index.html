@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AQUORA | Real-Data Offline Water Intelligence Platform</title>
+  <meta name="description" content="Production-ready real-data offline-first water intelligence platform bridging physical ESP32 LoRa sensor nodes with verified Tamil Nadu reservoir telemetry.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+
+  <!-- Top Navigation & Connectivity Bar -->
+  <header class="app-header" id="appHeader" role="banner">
+    <div class="brand-container">
+      <div class="logo-mark" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"></path>
+        </svg>
+      </div>
+      <div class="brand-text">
+        <h1 class="brand-title">AQUORA</h1>
+        <span class="brand-subtitle">Offline-First Water Intelligence • Cauvery Delta Reach</span>
+      </div>
+    </div>
+
+    <!-- Dual-Connectivity & Status Badges -->
+    <div class="header-status-group" role="region" aria-label="System Connectivity Status">
+      <!-- Local Gateway Status -->
+      <div class="status-chip" id="chipGateway" title="Local FastAPI Gateway connection status">
+        <span class="status-dot green" id="dotGateway"></span>
+        <span class="status-label" id="textGateway">GATEWAY: LOCAL ONLINE</span>
+      </div>
+
+      <!-- Internet Status -->
+      <div class="status-chip" id="chipInternet" title="Internet reachability (AQUORA does not depend on cloud)">
+        <span class="status-dot green" id="dotInternet"></span>
+        <span class="status-label" id="textInternet">INTERNET: ACTIVE</span>
+      </div>
+
+      <!-- Sync Queue -->
+      <div class="status-chip warning" id="chipSync" title="Records saved locally, awaiting cloud synchronization">
+        <span class="sync-count" id="pendingSyncCount">0</span>
+        <span class="status-label">Queued Sync</span>
+      </div>
+
+      <!-- Last Updated -->
+      <div class="status-chip info" id="chipLastUpdated" title="Last successful data refresh">
+        <span class="status-label" id="textLastUpdated">Updated: Just now</span>
+      </div>
+
+      <!-- Action Buttons with Accessible Keyboard Controls -->
+      <button class="btn btn-secondary btn-sm" id="btnOpenSettings" title="Configure API Base URL and network options" aria-label="Open network and API settings">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        <span>Settings</span>
+      </button>
+
+      <button class="btn btn-secondary btn-sm" id="btnManualSync" title="Push pending records to central cloud if internet is active" aria-label="Trigger cloud sync">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
+        <span>Sync Cloud</span>
+      </button>
+
+      <button class="btn btn-primary btn-sm" id="btnOpenInjector" title="Sensor Test Simulator & Telemetry Tools" aria-label="Open Sensor Test Simulator & Telemetry Tools">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+        <span>Simulator & Tools</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- System Alerts Banner (Auto-rendered if disconnected sensors or surge alerts) -->
+  <aside class="alerts-container" id="alertsBanner" aria-live="assertive" role="alert" style="display: none;">
+    <div class="alert-icon-box" aria-hidden="true">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+    </div>
+    <div class="alert-content" id="alertContent">
+      <!-- Injected via JavaScript -->
+    </div>
+  </aside>
+
+  <!-- Main Content Layout -->
+  <main class="dashboard-grid" role="main">
+
+    <!-- HERO SECTION: Downstream Water Arrival Prediction -->
+    <section class="card hero-arrival-card" id="cardArrival" aria-labelledby="arrivalHeading">
+      <div class="card-header">
+        <div class="header-left">
+          <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
+            <span class="tag model-tag">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+              MODEL-GENERATED PREDICTION
+            </span>
+            <span class="tag sensor-tag" id="arrivalSourceModeTag">PHYSICAL GROUND TRUTH</span>
+          </div>
+          <h2 class="card-title" id="arrivalHeading">Canal Water Arrival Estimation</h2>
+          <p class="card-desc">Hydrodynamic kinematic wave celerity calculated strictly from upstream physical sensor nodes. Never inferred from reservoir level alone.</p>
+        </div>
+        <div class="arrival-status-badge" id="arrivalStatusBadge" aria-live="polite">
+          EVALUATING...
+        </div>
+      </div>
+
+      <div class="arrival-body">
+        <div class="arrival-main-metric">
+          <div class="metric-label">ESTIMATED DOWNSTREAM ARRIVAL</div>
+          <div class="metric-value-huge" id="arrivalMainTime">--:--</div>
+          <div class="metric-sub" id="arrivalUncertaintyLabel">Awaiting physical sensor telemetry</div>
+        </div>
+
+        <div class="arrival-meta-grid">
+          <div class="meta-box">
+            <span class="meta-title">Wave Travel Time</span>
+            <span class="meta-val" id="arrivalTravelTime">-- hrs</span>
+            <span class="meta-note" id="arrivalDistanceNote">12.5 km reach</span>
+          </div>
+          <div class="meta-box">
+            <span class="meta-title">Confidence Score</span>
+            <div class="confidence-bar-wrapper">
+              <div class="confidence-bar" id="confidenceBar" style="width: 0%;"></div>
+            </div>
+            <span class="meta-val" id="confidencePercent">--%</span>
+            <span class="meta-note" id="confidenceExplanationNote">Derived from hydraulics</span>
+          </div>
+          <div class="meta-box">
+            <span class="meta-title">Upstream Surge</span>
+            <span class="meta-val" id="arrivalSurgeMag">-- cm</span>
+            <span class="meta-note" id="upstreamNodeRef">Intake Sluice</span>
+          </div>
+          <div class="meta-box">
+            <span class="meta-title">Calculation Engine</span>
+            <span class="meta-val" id="arrivalCalcTime">Just now</span>
+            <span class="meta-note">Local Kinematic Hydraulics</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Explanatory & Data Sufficiency Callout Box -->
+      <div class="explanation-box" id="arrivalExplanationBox">
+        <div class="explanation-icon" aria-hidden="true">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+        </div>
+        <div>
+          <div class="explanation-text" id="arrivalExplanationText" aria-live="polite">
+            Evaluating physical sensor telemetry from upstream reach...
+          </div>
+          <div class="confidence-breakdown-details" id="confidenceBreakdownDetails"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION 2: Interactive Canal Telemetry Chart & Reach Profile -->
+    <section class="card chart-card" id="cardChart" aria-labelledby="chartHeading">
+      <div class="card-header">
+        <div class="header-left">
+          <span class="tag sensor-tag">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M5 12.55a11 11 0 0 1 14.08 0"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><line x1="12" y1="20" x2="12.01" y2="20"/></svg>
+            ACTUAL PHYSICAL SENSOR • TIME-SERIES
+          </span>
+          <h2 class="card-title" id="chartHeading">Canal Reach Hydrograph & Wave Front Telemetry</h2>
+          <p class="card-desc">Water depth trend across reach segments. Solid markers represent physical field ground truth; amber dots represent testing simulations.</p>
+        </div>
+
+        <!-- Node Filter Controls -->
+        <div class="chart-filter-group" role="group" aria-label="Filter chart by canal node">
+          <button class="filter-pill active" data-filter="ALL" id="filterAll">All Nodes</button>
+          <button class="filter-pill" data-filter="NODE-UPSTREAM-01" id="filterUpstream">Head Intake (0 km)</button>
+          <button class="filter-pill" data-filter="NODE-MIDSTREAM-01" id="filterMidstream">Mid Siphon (5.2 km)</button>
+          <button class="filter-pill" data-filter="NODE-DOWNSTREAM-02" id="filterDownstream">Tail Offtake (12.5 km)</button>
+        </div>
+      </div>
+
+      <!-- Responsive SVG Chart Container -->
+      <div class="chart-container-box" id="canalChartContainer" role="img" aria-label="Canal water level time-series graph">
+        <div class="loading-placeholder">Rendering interactive telemetry hydrograph...</div>
+      </div>
+
+      <div class="chart-legend-bar">
+        <div class="legend-item"><span class="legend-dot cyan"></span> Head Regulator (Intake)</div>
+        <div class="legend-item"><span class="legend-dot emerald"></span> Mid-Reach Aqueduct</div>
+        <div class="legend-item"><span class="legend-dot purple"></span> Tail-End Farmer Offtake</div>
+        <div class="legend-item"><span class="legend-dot amber"></span> Simulated Test Data</div>
+        <div class="legend-item"><span class="legend-line dashed"></span> Surge Threshold (15cm)</div>
+      </div>
+    </section>
+
+    <!-- SECTION 3: Physical Canal Sensor Nodes (ESP32 + LoRa) -->
+    <section class="card sensor-nodes-card" id="cardSensors" aria-labelledby="sensorsHeading">
+      <div class="card-header">
+        <div class="header-left">
+          <span class="tag sensor-tag">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M5 12.55a11 11 0 0 1 14.08 0"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><line x1="12" y1="20" x2="12.01" y2="20"/></svg>
+            ACTUAL PHYSICAL SENSOR
+          </span>
+          <h2 class="card-title" id="sensorsHeading">Canal Level Ground-Truth Stations (LoRa Mesh)</h2>
+          <p class="card-desc">Ground-truth depth measurements from field-deployed ESP32 ultrasonic stations. Click any node card to inspect diagnostic telemetry.</p>
+        </div>
+        <span class="refresh-indicator" id="sensorLastRefresh">Live Local Link</span>
+      </div>
+
+      <!-- Grid of Sensor Nodes -->
+      <div class="sensor-nodes-grid" id="sensorNodesList" role="region" aria-label="Sensor nodes list">
+        <div class="loading-placeholder">Loading physical sensor nodes...</div>
+      </div>
+    </section>
+
+    <!-- SECTION 4: Official Reservoir Intelligence -->
+    <section class="card official-reservoir-card" id="cardOfficial" aria-labelledby="reservoirHeading">
+      <div class="card-header">
+        <div class="header-left">
+          <span class="tag official-tag">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M3 21h18M3 10h18M5 6l7-3 7 3M4 10v11M20 10v11M8 14v4M12 14v4M16 14v4"/></svg>
+            OFFICIAL RESERVOIR OBSERVATION
+          </span>
+          <h2 class="card-title" id="reservoirHeading">Verified Tamil Nadu Reservoir Telemetry</h2>
+          <p class="card-desc">Official Government data feeds (TN Agriculture ARS & Chennai Flood Monitor). Displays verified source URL, observation date & freshness.</p>
+        </div>
+        <div class="filter-controls">
+          <label for="reservoirProviderSelect" class="sr-only">Filter by provider</label>
+          <select id="reservoirProviderSelect" class="form-select" aria-label="Filter reservoir by provider">
+            <option value="">All Official Sources</option>
+            <option value="tn_agriculture">TN Agriculture ARS</option>
+            <option value="chennai_flood_monitor">Chennai Flood Monitor</option>
+          </select>
+          <button class="btn btn-secondary btn-sm" id="btnRefreshReservoirs" title="Fetch latest official records" aria-label="Refresh reservoir data">
+            Refresh
+          </button>
+        </div>
+      </div>
+
+      <div class="table-responsive">
+        <table class="data-table" id="reservoirTable">
+          <thead>
+            <tr>
+              <th scope="col">Reservoir</th>
+              <th scope="col">Source & Observation Date</th>
+              <th scope="col">Current Level (ft)</th>
+              <th scope="col">Full Depth (ft)</th>
+              <th scope="col">Current Storage (M.Cft)</th>
+              <th scope="col">Inflow (CuSecs)</th>
+              <th scope="col">Outflow (CuSecs)</th>
+              <th scope="col">Freshness Status</th>
+            </tr>
+          </thead>
+          <tbody id="reservoirTableBody">
+            <tr><td colspan="8" class="text-center">Loading official reservoir data...</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="transparency-footer">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+        <span>
+          <strong>Data Governance Notice:</strong> Reservoir observations reflect regional upstream bulk impoundment. 
+          Under AQUORA rules, reservoir outflow is NEVER used as a proxy for downstream canal arrival without local sensor validation.
+        </span>
+      </div>
+    </section>
+
+    <!-- SECTION 5: Irrigation Schedules & Supporting Context Split Grid -->
+    <div class="secondary-split-grid">
+
+      <!-- Offline Irrigation Scheduler -->
+      <section class="card irrigation-card" id="cardIrrigation" aria-labelledby="irrigationHeading">
+        <div class="card-header">
+          <div class="header-left">
+            <span class="tag offline-tag">OFFLINE AUTOMATION</span>
+            <h2 class="card-title" id="irrigationHeading">Ayacut Irrigation Turns</h2>
+            <p class="card-desc">Rotational water delivery synchronized with arrival wave front.</p>
+          </div>
+          <button class="btn btn-secondary btn-sm" id="btnRecalcIrrigation" aria-label="Recalculate irrigation schedules">Recalculate</button>
+        </div>
+
+        <div class="schedules-list" id="irrigationSchedulesList">
+          <!-- Populated by JS -->
+        </div>
+      </section>
+
+      <!-- Supporting Meteorological Context Card -->
+      <section class="card weather-card" id="cardWeather" aria-labelledby="weatherHeading">
+        <div class="card-header">
+          <div class="header-left">
+            <span class="tag context-tag">SUPPORTING CONTEXT ONLY</span>
+            <h2 class="card-title" id="weatherHeading">Canal Zone Weather Context</h2>
+            <p class="card-desc">Regional evaporative & precipitation context. Not substituted for physical water levels.</p>
+          </div>
+          <span class="weather-freshness" id="weatherFreshness">LIVE</span>
+        </div>
+
+        <div class="weather-display" id="weatherDisplay">
+          <div class="weather-temp-block">
+            <span class="weather-temp" id="weatherTemp">--°C</span>
+            <span class="weather-loc" id="weatherLoc">Cauvery Delta Reach</span>
+          </div>
+          <div class="weather-metrics">
+            <div class="w-item">
+              <span class="w-label">Precipitation</span>
+              <span class="w-val" id="weatherPrecip">-- mm</span>
+            </div>
+            <div class="w-item">
+              <span class="w-label">Relative Humidity</span>
+              <span class="w-val" id="weatherHumidity">--%</span>
+            </div>
+            <div class="w-item">
+              <span class="w-label">Wind Speed</span>
+              <span class="w-val" id="weatherWind">-- km/h</span>
+            </div>
+            <div class="w-item">
+              <span class="w-label">Data Source</span>
+              <span class="w-val small" id="weatherSource">Open-Meteo</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </div>
+
+    <!-- SECTION 6: System Event & Audit Log -->
+    <section class="card event-log-card" id="cardEventLog" aria-labelledby="logHeading">
+      <div class="card-header">
+        <div class="header-left">
+          <span class="tag offline-tag">SYSTEM EVENT LOG</span>
+          <h2 class="card-title" id="logHeading">Offline Operational Event Log</h2>
+          <p class="card-desc">Real-time audit log of sensor events, disconnections, surges, and cloud sync attempts.</p>
+        </div>
+        <div class="filter-controls">
+          <div class="log-filter-group" role="group" aria-label="Filter events by severity">
+            <button class="filter-pill active" data-log-filter="ALL" id="logFilterAll">All</button>
+            <button class="filter-pill" data-log-filter="CRITICAL" id="logFilterCritical">Critical</button>
+            <button class="filter-pill" data-log-filter="WARNING" id="logFilterWarning">Warnings</button>
+            <button class="filter-pill" data-log-filter="INFO" id="logFilterInfo">Info</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="event-log-container" id="eventLogContainer" role="log" aria-live="polite">
+        <!-- Rendered via JS -->
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Node Details Modal / Drawer -->
+  <div class="modal-overlay" id="nodeDetailModal" style="display: none;" role="dialog" aria-modal="true" aria-labelledby="nodeModalTitle">
+    <div class="modal-box modal-lg">
+      <div class="modal-header">
+        <h3 class="modal-title" id="nodeModalTitle">Sensor Station Diagnostics</h3>
+        <button class="modal-close" id="btnCloseNodeModal" aria-label="Close station modal">&times;</button>
+      </div>
+      <div class="modal-body" id="nodeModalBody">
+        <!-- Injected via JavaScript -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Settings & API Base URL Modal -->
+  <div class="modal-overlay" id="settingsModal" style="display: none;" role="dialog" aria-modal="true" aria-labelledby="settingsModalTitle">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3 class="modal-title" id="settingsModalTitle">System & Network Settings</h3>
+        <button class="modal-close" id="btnCloseSettingsModal" aria-label="Close settings modal">&times;</button>
+      </div>
+      <div class="modal-body">
+        <form id="settingsForm" class="custom-form">
+          <div class="form-group">
+            <label for="inputApiBaseUrl">FastAPI Gateway Base URL</label>
+            <input type="url" id="inputApiBaseUrl" class="form-control" placeholder="http://127.0.0.1:8000" aria-describedby="apiBaseHelp">
+            <small id="apiBaseHelp" class="modal-note">Leave blank to use current origin (<code>window.location.origin</code>). Use <code>http://192.168.x.x:8000</code> when connecting over local Wi-Fi router.</small>
+          </div>
+
+          <div class="form-group">
+            <label for="selectRefreshInterval">Periodic Polling Fallback (seconds)</label>
+            <select id="selectRefreshInterval" class="form-select">
+              <option value="5">5 seconds (High Frequency)</option>
+              <option value="8" selected>8 seconds (Standard)</option>
+              <option value="15">15 seconds (Power Saving)</option>
+              <option value="30">30 seconds (Low Bandwidth)</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <button type="submit" class="btn btn-primary btn-block">Save Configuration</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Interactive Test Telemetry Injection Modal -->
+  <div class="modal-overlay" id="telemetryModal" style="display: none;" role="dialog" aria-modal="true" aria-labelledby="telemetryModalTitle">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3 class="modal-title" id="telemetryModalTitle">Sensor Test Simulator & Telemetry Tools</h3>
+        <button class="modal-close" id="btnCloseModal" aria-label="Close telemetry modal">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p class="modal-note">
+          Test hydrodynamic arrival calculations, surge detection, and sensor disconnections. 
+          <strong>All injected data is transparently flagged as <code>is_simulated: true</code> and labeled as SIMULATED in the UI and API response. Simulated readings will never be mistaken for real ESP32 sensor measurements.</strong>
+        </p>
+
+        <div class="scenario-buttons">
+          <button class="btn btn-primary" id="btnInjectSurge">
+            <strong>🌊 Simulate Sluice Opening (Water Surge)</strong>
+            <span>Injects +75 cm surge at upstream node; downstream dry [SIMULATED]</span>
+          </button>
+          <button class="btn btn-secondary" id="btnInjectDry">
+            <strong>☀️ Simulate Dry Canal Bed</strong>
+            <span>Injects low 4 cm dead storage depth across reach [SIMULATED]</span>
+          </button>
+        </div>
+
+        <hr class="modal-divider">
+
+        <form id="customReadingForm" class="custom-form">
+          <h4>Custom Simulated Reading</h4>
+          <div class="form-row">
+            <div class="form-group">
+              <label for="inputNodeId">Target Node</label>
+              <select id="inputNodeId" class="form-control">
+                <option value="NODE-UPSTREAM-01">NODE-UPSTREAM-01 (Head Intake)</option>
+                <option value="NODE-MIDSTREAM-01">NODE-MIDSTREAM-01 (Mid Siphon)</option>
+                <option value="NODE-DOWNSTREAM-02">NODE-DOWNSTREAM-02 (Tail Offtake)</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="inputWaterLevel">Water Depth (cm)</label>
+              <input type="number" id="inputWaterLevel" class="form-control" value="85.0" step="0.5" min="0" max="400">
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label for="inputBattery">Battery Voltage (V)</label>
+              <input type="number" id="inputBattery" class="form-control" value="4.05" step="0.05" min="2.5" max="4.5">
+            </div>
+            <div class="form-group">
+              <label for="inputRssi">LoRa RSSI (dBm)</label>
+              <input type="number" id="inputRssi" class="form-control" value="-78" max="0" min="-130">
+            </div>
+          </div>
+          <button type="submit" class="btn btn-accent btn-block">Inject Simulated Test Reading [SIMULATED]</button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modular Scripts -->
+  <script src="/static/js/storage.js"></script>
+  <script src="/static/js/api.js"></script>
+  <script src="/static/js/chart.js"></script>
+  <script src="/static/js/app.js"></script>
+</body>
+</html>
