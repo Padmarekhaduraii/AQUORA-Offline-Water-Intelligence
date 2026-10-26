@@ -38,20 +38,62 @@ In reality:
 Arrival estimation requires **active physical telemetry from upstream canal sensor nodes**.
 
 ### Kinematic Wave Equations
-When an upstream intake node detects a water wave surge $\Delta h \ge 15.0\text{ cm}$:
-1. **Hydraulic Radius ($R$)**:
-   $$A = (B + m \cdot y) \cdot y, \quad P = B + 2y\sqrt{1 + m^2}, \quad R = \frac{A}{P}$$
-   Where $B = 4.0\text{ m}$ (bed width), $m = 1.5$ (side slope), and $y$ is water depth in meters.
-2. **Mean Section Velocity ($V$) via Manning's Formula**:
-   $$V = \frac{1}{n} R^{2/3} S_0^{1/2}$$
-   Where $n = 0.028$ (earthen channel roughness) and $S_0 = 0.00025$ (bed slope).
-3. **Kinematic Wave Celerity ($C_k$)**:
-   $$C_k = \frac{dQ}{dA} \approx \frac{5}{3} V$$
-4. **Estimated Travel Time ($T$) & Uncertainty Range ($\Delta T$)**:
-   $$T = \frac{\Delta D}{C_k}, \quad \Delta T = \pm \max(0.4\text{ h}, 0.22 \cdot T)$$
-   The uncertainty range explicitly accounts for weed friction, canal infiltration, and gate throttling.
 
----
+### Kinematic Wave Equations
+
+When an upstream intake node detects a water-wave surge of `Δh ≥ 15.0 cm`, AQUORA estimates the water-wave travel time using the following equations.
+
+**1. Hydraulic Radius (`R`)**
+
+```text
+A = (B + m × y) × y
+P = B + 2y × √(1 + m²)
+R = A / P
+```
+
+Where:
+- `A` = cross-sectional flow area (m²)
+- `P` = wetted perimeter (m)
+- `R` = hydraulic radius (m)
+- `B = 4.0 m` = assumed canal bed width
+- `m = 1.5` = assumed side slope
+- `y` = water depth (m)
+
+**2. Mean Section Velocity (`V`) — Manning's Formula**
+
+```text
+V = (1/n) × R^(2/3) × S₀^(1/2)
+```
+
+Where:
+- `n = 0.028` = assumed Manning roughness coefficient
+- `S₀ = 0.00025` = assumed channel bed slope
+- `V` = mean flow velocity (m/s)
+
+**3. Kinematic Wave Celerity (`Cₖ`)**
+
+```text
+Cₖ ≈ (5/3) × V
+```
+
+Here, `Cₖ` represents the approximate speed at which a change in water flow propagates downstream (m/s).
+
+**4. Estimated Travel Time (`T`) and Uncertainty (`ΔT`)**
+
+```text
+T = ΔD / Cₖ
+ΔT = ± max(0.4 hours, 0.22 × T)
+```
+
+Where:
+- `ΔD` = distance between monitoring nodes (m)
+- `T` = estimated travel time (seconds when `ΔD` is in metres and `Cₖ` is in m/s)
+- `ΔT` = uncertainty allowance, expressed in the same time unit as `T`
+
+The uncertainty allowance is intended to account for factors such as vegetation friction, canal infiltration, and gate throttling.
+
+**Prototype assumptions:** The canal dimensions, roughness coefficient, bed slope, and uncertainty allowance are initial model assumptions. They require calibration against field measurements before AQUORA's estimates can be relied upon for real irrigation decisions.
+
 
 ## 3. Offline-First Resilience Engine
 
